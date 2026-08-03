@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avance de Mantenimiento — Reforma 10</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --navy:#0F1C2E; --card:#1B2A3F; --card2:#223350;
+  --cyan:#0EA5E9; --green:#34D399; --amber:#FCD34D;
+  --red:#F87171; --gray:#94A3B8; --light:#CBD5E1;
+  --border:rgba(148,163,184,0.12);
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+  --mono:'Consolas','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--navy);color:var(--light);min-height:100vh;padding:24px;}
+
+h1{font-size:22px;font-weight:700;color:#F1F5F9;margin-bottom:4px;}
+.sub{font-size:12px;color:var(--gray);margin-bottom:24px;font-family:var(--mono);}
+.sub em{color:var(--cyan);}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+@media(max-width:700px){.kpis{grid-template-columns:1fr 1fr;}}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;border-top:3px solid;}
+.kpi.c1{border-top-color:var(--green);}
+.kpi.c2{border-top-color:var(--cyan);}
+.kpi.c3{border-top-color:var(--amber);}
+.kpi.c4{border-top-color:var(--red);}
+.kpi-n{font-size:38px;font-weight:700;line-height:1;}
+.kpi.c1 .kpi-n{color:var(--green);}
+.kpi.c2 .kpi-n{color:var(--cyan);}
+.kpi.c3 .kpi-n{color:var(--amber);}
+.kpi.c4 .kpi-n{color:var(--red);}
+.kpi-l{font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
+.kpi-s{font-size:11px;color:var(--light);margin-top:4px;}
+
+/* Alerta de estado */
+.alerta{border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;border:1px solid;}
+.alerta.ok{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3);}
+.alerta.warn{background:rgba(252,211,77,.1);border-color:rgba(252,211,77,.3);}
+.alerta.bad{background:rgba(241,113,113,.1);border-color:rgba(241,113,113,.3);}
+.alerta-ico{font-size:22px;flex-shrink:0;}
+.alerta-ttl{font-size:13px;font-weight:700;margin-bottom:3px;}
+.alerta.ok .alerta-ttl{color:var(--green);}
+.alerta.warn .alerta-ttl{color:var(--amber);}
+.alerta.bad .alerta-ttl{color:var(--red);}
+.alerta-body{font-size:12px;line-height:1.6;}
+
+/* Grids */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:800px){.g2,.g3{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card-lbl{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+
+/* Barra de progreso */
+.prog-wrap{margin-bottom:20px;}
+.prog-hdr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;}
+.prog-hdr span{color:var(--light);}
+.prog-hdr strong{font-family:var(--mono);color:var(--cyan);}
+.prog-track{background:#162338;border-radius:99px;height:12px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#1A56DB,var(--cyan));transition:width 1.5s cubic-bezier(.4,0,.2,1);}
+.prog-labels{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;}
+.prog-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gray);}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+/* Tabla */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:var(--card2);color:var(--gray);font-size:10px;font-weight:500;padding:8px 12px;text-align:left;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--card2);}
+tbody td{padding:8px 12px;color:var(--light);vertical-align:middle;}
+.mono{font-family:var(--mono);font-size:10px;color:var(--gray);}
+.badge{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;}
+.b-gr{background:rgba(52,211,153,.15);color:var(--green);border:1px solid rgba(52,211,153,.3);}
+.b-cy{background:rgba(14,165,233,.15);color:var(--cyan);border:1px solid rgba(14,165,233,.3);}
+.b-am{background:rgba(252,211,77,.15);color:var(--amber);border:1px solid rgba(252,211,77,.3);}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;}
+.tab{padding:5px 14px;border-radius:6px;font-size:12px;border:1px solid var(--border);background:transparent;color:var(--gray);cursor:pointer;transition:all .2s;}
+.tab.active{background:#1E429F;border-color:#1A56DB;color:#F1F5F9;}
+.hidden{display:none!important;}
+
+footer{text-align:center;padding-top:20px;font-size:11px;color:var(--gray);border-top:1px solid var(--border);margin-top:20px;}
+</style>
+</head>
+<body>
+
+<h1>📊 Avance de Mantenimiento Preventivo</h1>
+<div class="sub">Complejo Reforma 10 · Multiservicios de Energía · <em>Datos al 26/07/2026</em> · Total inventario: 44 laptops</div>
+
+<!-- KPIs -->
+<div class="kpis">
+  <div class="kpi c1">
+    <div class="kpi-n">18</div>
+    <div class="kpi-l">Completados</div>
+    <div class="kpi-s">Del Excel real · Jun–Jul 2026</div>
+  </div>
+  <div class="kpi c2">
+    <div class="kpi-n">41%</div>
+    <div class="kpi-l">Avance global</div>
+    <div class="kpi-s">18 de 44 equipos</div>
+  </div>
+  <div class="kpi c3">
+    <div class="kpi-n">26</div>
+    <div class="kpi-l">Pendientes</div>
+    <div class="kpi-s">Semanas 3 y restantes</div>
+  </div>
+  <div class="kpi c4">
+    <div class="kpi-n">+4</div>
+    <div class="kpi-l">Días de retraso</div>
+    <div class="kpi-s">Vs. plan original Sem. 1</div>
+  </div>
+</div>
+
+<!-- Alerta de estado -->
+<div class="alerta warn">
+  <div class="alerta-ico">⚠️</div>
+  <div>
+    <div class="alerta-ttl">RETRASO MODERADO — Recuperable si se mantiene el ritmo</div>
+    <div class="alerta-body" style="color:var(--light)">
+      El plan original proyectaba <strong>20 equipos al 17 de julio</strong>. Se completaron <strong>18 al 15 de julio</strong>, un déficit de 2 equipos.
+      La semana 20–24 julio (12 equipos programados, viernes 25 bloqueado) debe completarse íntegra para recuperar el ritmo.
+      Con 3 equipos/día en los días hábiles restantes, la meta de <strong>39 equipos al 31 de julio (89%)</strong> sigue siendo alcanzable.
+    </div>
+  </div>
+</div>
+
+<!-- Barra de progreso -->
+<div class="prog-wrap">
+  <div class="prog-hdr"><span>Progreso acumulado</span><strong>18 / 44 equipos</strong></div>
+  <div class="prog-track"><div class="prog-fill" id="pf" style="width:0%"></div></div>
+  <div class="prog-labels">
+    <div class="prog-dot"><div class="dot" style="background:var(--green)"></div>18 Completados (41%)</div>
+    <div class="prog-dot"><div class="dot" style="background:var(--amber)"></div>~16 Programados sem. 20–31 jul</div>
+    <div class="prog-dot"><div class="dot" style="background:var(--gray)"></div>10 Por programar</div>
+  </div>
+</div>
+
+<!-- Gráficas -->
+<div class="g2">
+  <div class="card">
+    <div class="card-lbl">Avance real vs. planificado por semana</div>
+    <canvas id="cAvance" height="220"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-lbl">Proyección acumulada — real vs. meta</div>
+    <canvas id="cProyeccion" height="220"></canvas>
+  </div>
+</div>
+
+<div class="g3">
+  <div class="card">
+    <div class="card-lbl">Estado actual del parque (44 equipos)</div>
+    <canvas id="cDonut" height="200"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-lbl">Equipos completados por departamento</div>
+    <canvas id="cDept" height="200"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-lbl">Distribución por fecha de entrega</div>
+    <canvas id="cFechas" height="200"></canvas>
+  </div>
+</div>
+
+<!-- Tabla de equipos atendidos -->
+<div style="margin-bottom:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+    <span style="font-size:14px;font-weight:600;color:#F1F5F9">Equipos atendidos — datos reales del inventario</span>
+    <span style="font-size:11px;color:var(--gray)">18 de 44 · Excel v2</span>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-f="todos">Todos (18)</button>
+    <button class="tab" data-f="FINANZAS">Finanzas (7)</button>
+    <button class="tab" data-f="DESARROLLO">Desarrollo (2)</button>
+    <button class="tab" data-f="otros">Otros</button>
+  </div>
+  <div class="tbl-wrap">
+    <table id="tbl">
+      <thead>
+        <tr><th>#</th><th>Nombre</th><th>Usuario</th><th>Departamento</th><th>Equipo</th><th>N° Serie</th><th>Fecha</th><th>Estado</th></tr>
+      </thead>
+      <tbody>
+        <tr data-d="FINANZAS"><td class="mono">01</td><td style="color:#F1F5F9;font-weight:500">Patricia Villatoro</td><td class="mono">BVILLATORO</td><td style="font-size:11px">Finanzas</td><td class="mono">Latitude 3520 / i5 / 16GB</td><td class="mono">6MPRBL3</td><td class="mono">14/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="FINANZAS"><td class="mono">02</td><td style="color:#F1F5F9;font-weight:500">Edwin Castillo</td><td class="mono">ECASTILLO</td><td style="font-size:11px">Finanzas</td><td class="mono">Inspiron 3520 / i3 / 16GB</td><td class="mono">2Y5XRW3</td><td class="mono">14/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="FINANZAS"><td class="mono">03</td><td style="color:#F1F5F9;font-weight:500">Katherine Orozco</td><td class="mono">KOROZCO</td><td style="font-size:11px">Finanzas</td><td class="mono">Latitude 3520 / i7 / 24GB</td><td class="mono">73PXGS3</td><td class="mono">09/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="FINANZAS"><td class="mono">04</td><td style="color:#F1F5F9;font-weight:500">Cristian Herrera</td><td class="mono">CHERRERA</td><td style="font-size:11px">Finanzas</td><td class="mono">Latitude 3540 / i5 / 24GB</td><td class="mono">G1FHND3</td><td class="mono">15/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">05</td><td style="color:#F1F5F9;font-weight:500">Ilsy López</td><td class="mono">ILOPEZ</td><td style="font-size:11px">Fund. Ríos por la Paz</td><td class="mono">Inspiron 3593 / i7 / 24GB</td><td class="mono">5W05S53</td><td class="mono">07/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">06</td><td style="color:#F1F5F9;font-weight:500">Angel Interiano</td><td class="mono">AINTERIANO</td><td style="font-size:11px">Mejora Continua</td><td class="mono">Inspiron 3511 / i7 / 16GB</td><td class="mono">C9LC6W3</td><td class="mono">08/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">07</td><td style="color:#F1F5F9;font-weight:500">Andres Sierra</td><td class="mono">ASIERRA</td><td style="font-size:11px">Compras</td><td class="mono">Lenovo ThinkPad E16 / Ultra7 / 24GB</td><td class="mono">PF-5A9T3F</td><td class="mono">07/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">08</td><td style="color:#F1F5F9;font-weight:500">Carlos Noriega</td><td class="mono">APEREZ</td><td style="font-size:11px">Des. Negocios</td><td class="mono">Latitude 3540 / i5 / 24GB</td><td class="mono">9HKKG24</td><td class="mono">15/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">09</td><td style="color:#F1F5F9;font-weight:500">Edwin Montejo</td><td class="mono">EMONTEJO</td><td style="font-size:11px">Procesos y Mejora</td><td class="mono">Inspiron 3501 / i7 / 24GB</td><td class="mono">5CP8J93</td><td class="mono">06/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">10</td><td style="color:#F1F5F9;font-weight:500">Ingrid Carrillo</td><td class="mono">JCARRILLO</td><td style="font-size:11px">T. Mercado Amb.</td><td class="mono">Latitude 3550 / i5 / 24GB</td><td class="mono">9NG0Y54</td><td class="mono">07/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="FINANZAS"><td class="mono">11</td><td style="color:#F1F5F9;font-weight:500">Luis Cajas</td><td class="mono">LCAJAS</td><td style="font-size:11px">Finanzas</td><td class="mono">Inspiron 3520 / i3 / 24GB</td><td class="mono">2Y8VRW3</td><td class="mono">09/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="DESARROLLO"><td class="mono">12</td><td style="color:#F1F5F9;font-weight:500">Raúl Pérez</td><td class="mono">RPEREZ</td><td style="font-size:11px">Desarrollo</td><td class="mono">Inspiron 3511 / i7 / 32GB / NVIDIA</td><td class="mono">9RYC6W3</td><td class="mono">08/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">13</td><td style="color:#F1F5F9;font-weight:500">Paola Chavez</td><td class="mono">PCHAVEZ</td><td style="font-size:11px">Legal</td><td class="mono">Inspiron 3520 / i5 / 16GB</td><td class="mono">JY4P9X3</td><td class="mono">08/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="FINANZAS"><td class="mono">14</td><td style="color:#F1F5F9;font-weight:500">Ada Cruz</td><td class="mono">ACRUZ</td><td style="font-size:11px">Finanzas</td><td class="mono">Inspiron 3520 / i3 / 16GB</td><td class="mono">18Q7RW3</td><td class="mono">08/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="DESARROLLO"><td class="mono">15</td><td style="color:#F1F5F9;font-weight:500">Erickson De León</td><td class="mono">EDELEON</td><td style="font-size:11px">Desarrollo</td><td class="mono">Inspiron 3511 / i7 / 32GB / NVIDIA</td><td class="mono">8LLC6W3</td><td class="mono">08/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">16</td><td style="color:#F1F5F9;font-weight:500">Kevin Sazo</td><td class="mono">KGONZALES</td><td style="font-size:11px">Transnorte</td><td class="mono">Latitude 3550 / i5 / 24GB</td><td class="mono">31C1Y54</td><td class="mono">07/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="otros"><td class="mono">17</td><td style="color:#F1F5F9;font-weight:500">Carlos Lara</td><td class="mono">CARLOSL</td><td style="font-size:11px">Op. Sedes</td><td class="mono">Latitude 3540 / i5 / 24GB</td><td class="mono">9HKKG24</td><td class="mono">15/07/2026</td><td><span class="badge b-gr">✓ Completado</span></td></tr>
+        <tr data-d="FINANZAS"><td class="mono">18</td><td style="color:#F1F5F9;font-weight:500">Treycy Garcia</td><td class="mono">TGARCIA</td><td style="font-size:11px">Finanzas</td><td class="mono">Inspiron 3501 / i5 / 24GB</td><td class="mono">9N0L983</td><td class="mono">15/07/2026</td><td><span class="badge b-am">★ Reprogramado</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<footer>Multiservicios de Energía · TI Reforma 10 · Jonathan S. Gamboa Pérez · Datos al 26/07/2026</footer>
+
+<script>
+const C = {
+  green:'#34D399', cyan:'#0EA5E9', amber:'#FCD34D',
+  red:'#F87171', gray:'#94A3B8', blue:'#60A5FA',
+  grid:'rgba(148,163,184,0.07)', tip:{backgroundColor:'#1B2A3F',borderColor:'#223350',borderWidth:1}
+};
+Chart.defaults.color = C.gray;
+Chart.defaults.font.family = "Consolas, 'Courier New', monospace";
+Chart.defaults.font.size = 10;
+
+// Animación barra de progreso
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('pf').style.width = '41%', 300);
+});
+
+// Gráfica 1: Barras — real vs planificado
+new Chart(document.getElementById('cAvance'), {
+  type: 'bar',
+  data: {
+    labels: ['Jun\n(prev)', 'Sem 1\n6–9 Jul', 'Sem 1\n13–17 Jul', 'Sem 2\n20–24 Jul\n(meta)', 'Sem 3\n27–31 Jul\n(meta)'],
+    datasets: [
+      {
+        label: 'Real completados',
+        data: [4, 9, 5, 0, 0],
+        backgroundColor: C.green + 'CC',
+        borderColor: C.green,
+        borderWidth: 1.5,
+        borderRadius: 5,
+      },
+      {
+        label: 'Meta planificada',
+        data: [4, 0, 15, 12, 10],
+        backgroundColor: C.cyan + '33',
+        borderColor: C.cyan,
+        borderWidth: 1.5,
+        borderRadius: 5,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 1400, easing: 'easeOutQuart' },
+    plugins: { legend: { position: 'top', labels: { color: C.gray, boxWidth: 10, padding: 12 } }, tooltip: C.tip },
+    scales: {
+      x: { grid: { color: C.grid }, ticks: { color: C.gray } },
+      y: { grid: { color: C.grid }, ticks: { color: C.gray, stepSize: 3 }, max: 16,
+           title: { display: true, text: 'Equipos', color: C.gray } }
+    }
+  }
+});
+
+// Gráfica 2: Línea — proyección acumulada
+new Chart(document.getElementById('cProyeccion'), {
+  type: 'line',
+  data: {
+    labels: ['Jun 16','Jul 6','Jul 7','Jul 8','Jul 9','Jul 14','Jul 15','Jul 20','Jul 24','Jul 31'],
+    datasets: [
+      {
+        label: 'Real acumulado',
+        data: [4, 5, 9, 14, 16, 18, 18, null, null, null],
+        borderColor: C.green,
+        backgroundColor: C.green + '22',
+        pointBackgroundColor: C.green,
+        pointRadius: 5,
+        tension: 0.3,
+        fill: true,
+      },
+      {
+        label: 'Proyección esperada',
+        data: [4, null, null, null, null, null, 18, 30, 42, 44],
+        borderColor: C.cyan,
+        backgroundColor: C.cyan + '11',
+        pointBackgroundColor: C.cyan,
+        pointRadius: 4,
+        borderDash: [5, 3],
+        tension: 0.3,
+      },
+      {
+        label: 'Meta mínima 80%',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 35],
+        borderColor: C.amber,
+        pointRadius: 0,
+        borderDash: [3, 3],
+        tension: 0,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 1600, easing: 'easeInOutQuart' },
+    plugins: { legend: { position: 'top', labels: { color: C.gray, boxWidth: 10, padding: 10 } }, tooltip: C.tip },
+    scales: {
+      x: { grid: { color: C.grid }, ticks: { color: C.gray } },
+      y: { grid: { color: C.grid }, ticks: { color: C.gray }, min: 0, max: 44,
+           title: { display: true, text: 'Acumulado', color: C.gray } }
+    }
+  }
+});
+
+// Gráfica 3: Donut — estado
+new Chart(document.getElementById('cDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Completados (18)','Sem. 20–24 Jul (12)','Sem. 27–31 Jul (10)','Pendientes (4)'],
+    datasets: [{
+      data: [18, 12, 10, 4],
+      backgroundColor: [C.green+'CC', C.amber+'CC', C.blue+'CC', C.gray+'99'],
+      borderColor: [C.green, C.amber, C.blue, C.gray],
+      borderWidth: 1.5,
+      hoverOffset: 5,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '62%',
+    animation: { animateRotate: true, duration: 1400 },
+    plugins: {
+      legend: { position: 'bottom', labels: { color: C.gray, boxWidth: 9, padding: 8, font: { size: 9 } } },
+      tooltip: C.tip
+    }
+  }
+});
+
+// Gráfica 4: Barras — por departamento
+new Chart(document.getElementById('cDept'), {
+  type: 'bar',
+  data: {
+    labels: ['Finanzas','Desarrollo','Otros depts.','Mejora Cont.','Legal','Compras','Des. Neg.'],
+    datasets: [{
+      label: 'Equipos',
+      data: [7, 2, 4, 1, 1, 1, 1],
+      backgroundColor: [C.cyan+'CC', C.green+'CC', C.amber+'CC', C.blue+'CC', '#F472B6CC', '#A78BFA CC', C.gray+'CC'],
+      borderRadius: 4, borderWidth: 0,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 1200 },
+    plugins: { legend: { display: false }, tooltip: C.tip },
+    scales: {
+      x: { grid: { color: C.grid }, ticks: { color: C.gray, stepSize: 1 } },
+      y: { grid: { display: false }, ticks: { color: C.gray, font: { size: 9 } } }
+    }
+  }
+});
+
+// Gráfica 5: Barras — por fecha
+new Chart(document.getElementById('cFechas'), {
+  type: 'bar',
+  data: {
+    labels: ['6 Jul','7 Jul','8 Jul','9 Jul','14 Jul','15 Jul'],
+    datasets: [{
+      label: 'Equipos entregados',
+      data: [1, 4, 5, 2, 2, 4],
+      backgroundColor: [C.blue+'AA', C.green+'AA', C.green+'CC', C.cyan+'AA', C.amber+'AA', C.amber+'CC'],
+      borderRadius: 5, borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 1200 },
+    plugins: {
+      legend: { display: false }, tooltip: C.tip,
+      annotation: {}
+    },
+    scales: {
+      x: { grid: { color: C.grid }, ticks: { color: C.gray } },
+      y: { grid: { color: C.grid }, ticks: { color: C.gray, stepSize: 1 } }
+    }
+  }
+});
+
+// Filtros de tabla
+document.querySelectorAll('#tabs .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#tabs .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const f = tab.dataset.f;
+    document.querySelectorAll('#tbl tbody tr').forEach(tr => {
+      if (f === 'todos') tr.classList.remove('hidden');
+      else if (f === 'otros') tr.classList.toggle('hidden', tr.dataset.d === 'FINANZAS' || tr.dataset.d === 'DESARROLLO');
+      else tr.classList.toggle('hidden', tr.dataset.d !== f);
+    });
+  });
+});
+</script>
+</body>
+</html>
